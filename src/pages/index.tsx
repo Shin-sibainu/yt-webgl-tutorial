@@ -1,11 +1,108 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from 'next/font/google'
-import styles from '@/styles/Home.module.css'
-
-const inter = Inter({ subsets: ['latin'] })
+import Head from "next/head";
+import Image from "next/image";
+import styles from "@/styles/Home.module.css";
+import * as THREE from "three";
+import { useEffect, useRef } from "react";
+import { OrbitControls } from "three/examples/jsm/controls/OrbitControls";
 
 export default function Home() {
+  const containerRef: any = useRef();
+
+  useEffect(() => {
+    const container: any = containerRef.current;
+    const renderer = new THREE.WebGLRenderer();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    container.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(
+      75,
+      window.innerWidth / window.innerHeight,
+      0.1,
+      1000
+    );
+    camera.position.z = 5;
+
+    // Add OrbitControls
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+    controls.dampingFactor = 0.05;
+    controls.update();
+
+    const vertexShader = `
+    varying vec2 vUv;
+    uniform float u_time;
+    void main() {
+      vUv = uv;
+      vec3 pos = position;
+      pos.z += sin(uv.y * 10.0 + u_time) * 0.5;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    }
+  `;
+
+    const fragmentShader = `
+    uniform float u_time;
+    varying vec2 vUv;
+    void main() {
+      gl_FragColor = vec4(vUv, sin(u_time), 1.0);
+    }
+  `;
+
+    //white noise
+    //   const vertexShader = `
+    //   varying vec2 vUv;
+    //   uniform float u_time;
+    //   void main() {
+    //     vUv = uv;
+    //     vec3 pos = position;
+    //     pos.z += 0.1 * sin(0.1 * pos.x + u_time);
+    //     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+    //   }
+    // `;
+
+    // const fragmentShader = `
+    //   uniform float u_time;
+    //   varying vec2 vUv;
+    //   void main() {
+    //     float brightness = fract(sin(dot(vUv, vec2(12.9898, 78.233))) * 43758.5453);
+    //     gl_FragColor = vec4(vec3(brightness), 1.0);
+    //   }
+    // `;
+
+    const material = new THREE.ShaderMaterial({
+      uniforms: {
+        u_time: { value: 0.0 },
+      },
+      vertexShader: vertexShader,
+      fragmentShader: fragmentShader,
+    });
+
+    const geometry = new THREE.PlaneGeometry(5, 5, 50, 50);
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+
+    const animate = function () {
+      requestAnimationFrame(animate);
+      controls.update();
+      material.uniforms.u_time.value = performance.now() / 1000;
+      renderer.render(scene, camera);
+    };
+
+    animate();
+
+    const onWindowResize = () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    };
+
+    window.addEventListener("resize", onWindowResize);
+
+    return () => {
+      window.removeEventListener("resize", onWindowResize);
+      container.removeChild(renderer.domElement);
+    };
+  }, []);
   return (
     <>
       <Head>
@@ -14,110 +111,7 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>src/pages/index.tsx</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
-            />
-          </div>
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
-        </div>
-      </main>
+      <div ref={containerRef} className={styles.container} />
     </>
-  )
+  );
 }
